@@ -4,22 +4,21 @@ from flask import Flask, request
 import threading
 import time
 
-# Récupère le token depuis Render Environment Variables
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
 if not TOKEN:
-    raise ValueError("Il manque la variable d'environnement TELEGRAM_TOKEN !")
+    raise ValueError("Variable d'environnement TELEGRAM_TOKEN manquante !")
 
 app = Flask(__name__)
 
-# Fonction pour envoyer le menu principal avec les boutons
+# --- Menu principal avec boutons ---
 def send_main_menu(chat_id):
     menu = {
         "inline_keyboard": [
             [
                 {
                     "text": "📱 Mini-App",
-                    "web_app": {"url": "https://clope36.42web.io"}
+                    "url": "https://clope36.42web.io"  # ← bouton URL classique
                 },
                 {
                     "text": "📞 Contact",
@@ -38,19 +37,19 @@ def send_main_menu(chat_id):
         }
     )
 
-# Route webhook
+# --- Webhook ---
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     update = request.get_json()
     if "message" in update:
         chat_id = update["message"]["chat"]["id"]
-        text = update["message"]["text"]
+        text = update["message"]["get"]("text", "")
         if text == "/start":
             send_main_menu(chat_id)
         else:
             reply = f"Message reçu : {text}"
             requests.get(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={reply}")
-            print(f"Message reçu : {text} → {reply}")  # Log dans Render
+            print(f"Message reçu : {text} → {reply}")
     elif "callback_query" in update:
         chat_id = update["callback_query"]["message"]["chat"]["id"]
         data = update["callback_query"]["data"]
@@ -60,12 +59,12 @@ def webhook():
             print(f"Callback reçu : {data} → {reply}")
     return "OK", 200
 
-# Petit serveur pour Render
+# --- Serveur Flask ---
 @app.route("/")
 def index():
     return "Bot Telegram en ligne ✅"
 
-# Fonction de polling (optionnel, peut rester pour debug)
+# --- Polling (secours) ---
 def telegram_bot_polling():
     last_update_id = None
     while True:
@@ -88,10 +87,8 @@ def telegram_bot_polling():
             print("Erreur polling:", e)
         time.sleep(1)
 
-# Lance le polling dans un thread
 threading.Thread(target=telegram_bot_polling).start()
 
-# Lance Flask
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
