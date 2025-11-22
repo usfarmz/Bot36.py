@@ -4,8 +4,7 @@ from flask import Flask
 import threading
 import time
 
-TOKEN = os.environ.get("8532082529:AAG76DFBL3V9JYcdTHd5XbgReDhuBCOalbEc")
-
+TOKEN = os.environ.get("TELEGRAM_TOKEN")
 # Vérifie que le token est présent
 if not TOKEN:
     raise ValueError("Il manque la variable d'environnement TELEGRAM_TOKEN !")
