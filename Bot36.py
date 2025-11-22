@@ -43,7 +43,7 @@ def webhook():
     update = request.get_json()
     if "message" in update:
         chat_id = update["message"]["chat"]["id"]
-        text = update["message"]["get"]("text", "")
+        text = update["message"].get("text", "")
         if text == "/start":
             send_main_menu(chat_id)
         else:
