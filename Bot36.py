@@ -4,6 +4,8 @@ from flask import Flask, request
 import threading
 import time
 
+print("Le bot démarre…")
+
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
 if not TOKEN:
