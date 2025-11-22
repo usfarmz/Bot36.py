@@ -16,14 +16,15 @@ def send_main_menu(chat_id):
     menu = {
         "inline_keyboard": [
             [
-                
-                  {  "text": "📱 Mini-App",
-                "web_app": {"url": "https://clope36.42web.io"},
+                {
+                    "text": "📱 Mini-App",
+                    "web_app": {"url": "https://clope36.42web.io"}
+                },
                 {
                     "text": "📞 Contact",
                     "callback_data": "contact"
                 }
-            ] 
+            ]
         ]
     }
 
@@ -53,7 +54,7 @@ def webhook():
         chat_id = update["callback_query"]["message"]["chat"]["id"]
         data = update["callback_query"]["data"]
         if data == "contact":
-            reply = "Message reçu : Contact"
+            reply = "📞 Contact de la team : @TeamSupport"
             requests.get(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={reply}")
             print(f"Callback reçu : {data} → {reply}")
     return "OK", 200
@@ -74,18 +75,33 @@ def telegram_bot_polling():
                 for update in r["result"]:
                     update_id = update["update_id"]
                     if last_update_id != update_id:
-                        chat_id = update["message"]["chat"]["id"]
-                        text = update["message"]["text"]
-                        if text == "/start":
-                            send_main_menu(chat_id)
-                        else:
-                            reply = f"Message reçu : {text}"
-                            requests.get(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={reply}")
+                        webhook_processing(update)
                         last_update_id = update_id
         except Exception as e:
             print("Erreur polling:", e)
         time.sleep(1)
 
+def webhook_processing(update):
+    if "message" in update:
+        chat_id = update["message"]["chat"]["id"]
+        text = update["message"].get("text", "")
+        if text == "/start":
+            send_main_menu(chat_id)
+        else:
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                json={"chat_id": chat_id, "text": f"Message reçu : {text}"}
+            )
+    elif "callback_query" in update:
+        chat_id = update["callback_query"]["message"]["chat"]["id"]
+        data = update["callback_query"]["data"]
+        if data == "contact":
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                json={"chat_id": chat_id, "text": "📞 Contact de la team : @TeamSupport"}
+            )
+
+# Lance le polling dans un thread
 threading.Thread(target=telegram_bot_polling).start()
 
 if __name__ == "__main__":
