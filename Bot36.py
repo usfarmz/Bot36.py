@@ -16,14 +16,14 @@ def send_main_menu(chat_id):
     menu = {
         "inline_keyboard": [
             [
-                {
+                
                     "text": "📱 Mini-App",
                 "web_app": {"url": "https://clope36.42web.io"}
                 {
                     "text": "📞 Contact",
                     "callback_data": "contact"
                 }
-            ]
+            ] 
         ]
     }
 
