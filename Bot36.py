@@ -17,9 +17,7 @@ def send_main_menu(chat_id):
         "inline_keyboard": [
             [
                 {
-                    "text": "📱 Mini-App",
-                    "url": "https://clope36.42web.io"  # ← bouton URL classique
-                },
+                    "text": "📱 Mini-{"text": "📱 Mini-App", "web_app": {"url": "https://clope36.42web.io"}},
                 {
                     "text": "📞 Contact",
                     "callback_data": "contact"
