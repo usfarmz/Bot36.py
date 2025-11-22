@@ -4,23 +4,29 @@ from flask import Flask, request
 import threading
 import time
 
+# Récupère le token depuis Render Environment Variables
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
 if not TOKEN:
-    raise ValueError("Variable d'environnement TELEGRAM_TOKEN manquante !")
+    raise ValueError("Il manque la variable d'environnement TELEGRAM_TOKEN !")
 
 app = Flask(__name__)
 
-# --- Envoi du menu avec les boutons ---
+# Fonction pour envoyer le menu principal avec les boutons
 def send_main_menu(chat_id):
     menu = {
-        "keyboard": [
+        "inline_keyboard": [
             [
-                {"text": "📱 Mini-App", "web_app": {"url": "https://clope36.42web.io"}},
-                {"text": "📞 Contact"}
+                {
+                    "text": "📱 Mini-App",
+                    "web_app": {"url": "https://clope36.42web.io"}
+                },
+                {
+                    "text": "📞 Contact",
+                    "callback_data": "contact"
+                }
             ]
-        ],
-        "resize_keyboard": True
+        ]
     }
 
     requests.post(
@@ -32,74 +38,60 @@ def send_main_menu(chat_id):
         }
     )
 
-# --- Webhook ---
+# Route webhook
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     update = request.get_json()
-
     if "message" in update:
         chat_id = update["message"]["chat"]["id"]
-        text = update["message"].get("text", "")
-
+        text = update["message"]["text"]
         if text == "/start":
             send_main_menu(chat_id)
-        elif text == "📞 Contact":
-            requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                json={
-                    "chat_id": chat_id,
-                    "text": "📞 Contact de la team : @TeamSupport"
-                }
-            )
         else:
-            requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                json={"chat_id": chat_id, "text": f"Message reçu : {text}"}
-            )
-
+            reply = f"Message reçu : {text}"
+            requests.get(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={reply}")
+            print(f"Message reçu : {text} → {reply}")  # Log dans Render
+    elif "callback_query" in update:
+        chat_id = update["callback_query"]["message"]["chat"]["id"]
+        data = update["callback_query"]["data"]
+        if data == "contact":
+            reply = "Message reçu : Contact"
+            requests.get(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={reply}")
+            print(f"Callback reçu : {data} → {reply}")
     return "OK", 200
 
-# --- Polling (secours) ---
-def polling():
-    last = None
-    while True:
-        try:
-            r = requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates").json()
-            if "result" in r:
-                for up in r["result"]:
-                    if last != up["update_id"]:
-                        webhook_processing(up)
-                        last = up["update_id"]
-        except:
-            pass
-        time.sleep(1)
-
-def webhook_processing(update):
-    if "message" in update:
-        chat_id = update["message"]["chat"]["id"]
-        text = update["message"].get("text", "")
-        if text == "/start":
-            send_main_menu(chat_id)
-        elif text == "📞 Contact":
-            requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                json={
-                    "chat_id": chat_id,
-                    "text": "📞 Contact de la team : @TeamSupport"
-                }
-            )
-        else:
-            requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                json={"chat_id": chat_id, "text": f"Message reçu : {text}"}
-            )
-
-threading.Thread(target=polling).start()
-
+# Petit serveur pour Render
 @app.route("/")
 def index():
-    return "Bot Telegram en ligne ⚡"
+    return "Bot Telegram en ligne ✅"
 
+# Fonction de polling (optionnel, peut rester pour debug)
+def telegram_bot_polling():
+    last_update_id = None
+    while True:
+        try:
+            url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+            r = requests.get(url).json()
+            if "result" in r:
+                for update in r["result"]:
+                    update_id = update["update_id"]
+                    if last_update_id != update_id:
+                        chat_id = update["message"]["chat"]["id"]
+                        text = update["message"]["text"]
+                        if text == "/start":
+                            send_main_menu(chat_id)
+                        else:
+                            reply = f"Message reçu : {text}"
+                            requests.get(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={chat_id}&text={reply}")
+                        last_update_id = update_id
+        except Exception as e:
+            print("Erreur polling:", e)
+        time.sleep(1)
+
+# Lance le polling dans un thread
+threading.Thread(target=telegram_bot_polling).start()
+
+# Lance Flask
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
